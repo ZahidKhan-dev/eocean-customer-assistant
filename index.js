@@ -13,10 +13,12 @@ const FALLBACK_REPLY = "Sorry, something went wrong on our side. Please try agai
 
 const client = new Client({
     authStrategy: new LocalAuth({
-        clientId: process.env.WHATSAPP_SESSION_NAME || "eocean-customer-assistant"
+        clientId: process.env.WHATSAPP_SESSION_NAME || "eocean-customer-assistant",
+        dataPath: process.env.WWEBJS_AUTH_PATH || "./.wwebjs_auth"
     }),
     puppeteer: {
         headless: true,
+        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
         args: ["--no-sandbox", "--disable-setuid-sandbox"]
     }
 });
