@@ -1,0 +1,34 @@
+﻿{
+  "project": "Eocean Customer Assistant",
+  "sources": [
+    {
+      "name": "Eocean Company Profile",
+      "file": "eOcean_Company_Profile_WhatsApp_Chatbot.pptx",
+      "audience": "external_customers",
+      "status": "approved_source_pending_fact_verification",
+      "content_types": [
+        "company_overview",
+        "communication_channels",
+        "services",
+        "products",
+        "general_use_cases"
+      ],
+      "verification_required": [
+        "pricing",
+        "API_endpoints",
+        "authentication",
+        "payloads",
+        "webhooks",
+        "rate_limits",
+        "SLAs",
+        "support_hours",
+        "country_and_operator_coverage"
+      ]
+    },
+    {
+      "name": "Employee Handbook",
+      "audience": "internal",
+      "status": "excluded_pending_section_level_external_approval"
+    }
+  ]
+}
