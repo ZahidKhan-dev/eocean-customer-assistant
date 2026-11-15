@@ -1,7 +1,10 @@
 require("dotenv").config();
 
 const { Client, LocalAuth, MessageMedia } = require("whatsapp-web.js");
-const qrcode = require("qrcode-terminal");
+const QRCode = require("qrcode");
+const http = require("http");
+
+let latestQr = null;
 
 const WEBHOOK_URL = process.env.N8N_WEBHOOK_URL;
 
@@ -24,11 +27,9 @@ const client = new Client({
 });
 
 client.on("qr", (qr) => {
-    console.log("WHATSAPP_QR_RAW_START");
-    console.log(qr);
-    console.log("WHATSAPP_QR_RAW_END");
+    latestQr = qr;
+    console.log("New WhatsApp QR code generated. Open the QR page to scan it.");
 });
-
 client.on("ready", () => {
     console.log("WhatsApp connected successfully.");
 });
@@ -174,6 +175,106 @@ client.on("message", async (message) => {
         if (typingTimer) clearInterval(typingTimer);
         if (chat) chat.clearState().catch(() => {});
     }
+});
+
+const QR_PAGE_PASSWORD = process.env.QR_PAGE_PASSWORD;
+
+if (!QR_PAGE_PASSWORD) {
+    throw new Error("QR_PAGE_PASSWORD is missing from Railway Variables");
+}
+
+const qrServer = http.createServer(async (req, res) => {
+    const auth = req.headers.authorization || "";
+    const encoded = auth.startsWith("Basic ") ? auth.slice(6) : "";
+
+    let credentials = "";
+
+    try {
+        credentials = Buffer.from(encoded, "base64").toString("utf8");
+    } catch (error) {
+        credentials = "";
+    }
+
+    if (credentials !== `admin:${QR_PAGE_PASSWORD}`) {
+        res.writeHead(401, {
+            "WWW-Authenticate": 'Basic realm="WhatsApp QR"',
+            "Content-Type": "text/plain"
+        });
+        return res.end("Password required");
+    }
+
+    if (req.url === "/qr.png") {
+        if (!latestQr) {
+            res.writeHead(503, { "Content-Type": "text/plain" });
+            return res.end("QR code is not ready yet. Refresh this page.");
+        }
+
+        try {
+            const image = await QRCode.toBuffer(latestQr, {
+                type: "png",
+                width: 500,
+                margin: 3
+            });
+
+            res.writeHead(200, {
+                "Content-Type": "image/png",
+                "Cache-Control": "no-store"
+            });
+
+            return res.end(image);
+        } catch (error) {
+            console.error("QR image generation failed:", error.message);
+            res.writeHead(500);
+            return res.end("Could not generate QR image");
+        }
+    }
+
+    if (req.url === "/" || req.url.startsWith("/?")) {
+        res.writeHead(200, {
+            "Content-Type": "text/html; charset=utf-8",
+            "Cache-Control": "no-store"
+        });
+
+        return res.end(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Eocean WhatsApp QR</title>
+                <meta name="viewport" content="width=device-width, initial-scale=1">
+                <style>
+                    body {
+                        font-family: Arial, sans-serif;
+                        text-align: center;
+                        padding: 30px;
+                    }
+                    img {
+                        width: 100%;
+                        max-width: 500px;
+                    }
+                </style>
+            </head>
+            <body>
+                <h2>Connect Eocean WhatsApp</h2>
+                <p>Open WhatsApp on your phone and scan this QR code.</p>
+                <img id="qr" src="/qr.png">
+                <p id="status">Waiting for QR code...</p>
+                <script>
+                    setInterval(() => {
+                        document.getElementById("qr").src =
+                            "/qr.png?t=" + Date.now();
+                    }, 5000);
+                </script>
+            </body>
+            </html>
+        `);
+    }
+
+    res.writeHead(404);
+    res.end("Not found");
+});
+
+qrServer.listen(process.env.PORT || 3000, "0.0.0.0", () => {
+    console.log("Protected WhatsApp QR webpage is running.");
 });
 
 client.initialize();
