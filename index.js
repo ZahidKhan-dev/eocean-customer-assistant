@@ -41,6 +41,15 @@ client.on("auth_failure", (msg) => {
 client.on("disconnected", (reason) => {
     console.error("WhatsApp disconnected:", reason);
 });
+client.on("message_create", (message) => {
+    console.log("MESSAGE_CREATE EVENT:", {
+        from: message.from,
+        to: message.to,
+        fromMe: message.fromMe,
+        type: message.type,
+        body: message.body
+    });
+});
 
 client.on("message", async (message) => {
     let typingTimer = null;
